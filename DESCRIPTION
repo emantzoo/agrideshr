@@ -34,5 +34,5 @@ Suggests:
     gridExtra,
     readxl
 VignetteBuilder: knitr
-URL: https://github.com/yourusername/agrideshr
-BugReports: https://github.com/yourusername/agrideshr/issues
+URL: https://emantzoo.github.io/agrideshr/, https://github.com/emantzoo/agrideshr
+BugReports: https://github.com/emantzoo/agrideshr/issues

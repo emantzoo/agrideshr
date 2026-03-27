@@ -10,7 +10,7 @@ and a detailed vignette covering the full analysis pipeline.
 
 ```r
 # Install from GitHub
-devtools::install_github("yourusername/agrideshr", build_vignettes = TRUE)
+devtools::install_github("emantzoo/agrideshr", build_vignettes = TRUE)
 ```
 
 ## Designs Covered
