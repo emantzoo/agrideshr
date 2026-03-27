@@ -1,0 +1,140 @@
+---
+title: "Latin Square Design"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Latin Square Design}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## When to Use
+
+The **Latin Square Design (LSD)** extends the RCBD by controlling for **two
+sources of variability** simultaneously. Use it when:
+
+- You have **one treatment factor** of interest.
+- There are **two blocking factors** (e.g., rows and columns in a field,
+  days and operators in a lab).
+- The number of treatments equals the number of levels in each blocking factor
+  (producing a square layout).
+
+## The Design
+
+Each treatment appears exactly once in every row and every column. The model is:
+
+$$Y_{ijk} = \mu + \rho_i + \gamma_j + \tau_k + \varepsilon_{ijk}$$
+
+where $\rho_i$ is the row effect, $\gamma_j$ is the column effect, and
+$\tau_k$ is the treatment effect.
+
+## Data
+
+We use a 4x4 Latin square dataset with four treatments, four rows, and four
+columns.
+
+```{r data}
+library(agrideshr)
+data(lsd_data)
+str(lsd_data)
+lsd_data
+```
+
+## Exploratory Visualization
+
+```{r scatter}
+library(ggplot2)
+
+ggplot(lsd_data, aes(x = Treatment, y = Yield, colour = Row, shape = Column)) +
+  geom_point(size = 3) +
+  ylim(0, NA) +
+  theme_bw() +
+  labs(title = "Yield by Treatment (Row and Column indicated)")
+```
+
+## Model Fitting
+
+Both row and column effects are included in the model:
+
+```{r model}
+mod <- aov(Yield ~ Row + Column + Treatment, data = lsd_data)
+summary(mod)
+```
+
+The F-test for `Treatment` assesses treatment differences after removing row
+and column variability.
+
+## Assumption Checking
+
+```{r assumptions, fig.width = 10, fig.height = 4}
+check_assumptions(mod, data = lsd_data, group = "Treatment")
+```
+
+## Post-hoc Comparisons
+
+We compare treatments only (rows and columns are nuisance factors):
+
+```{r tukey}
+TukeyHSD(mod, which = "Treatment")
+```
+
+```{r tukey-plot}
+plot(TukeyHSD(mod, which = "Treatment"), las = 1, col = "brown")
+```
+
+### Estimated Marginal Means
+
+```{r emmeans}
+library(emmeans)
+
+emm <- emmeans(mod, specs = "Treatment")
+emm
+```
+
+```{r emmeans-pairs}
+pairs(emm)
+```
+
+```{r emmeans-plot, fig.width = 7, fig.height = 4}
+plot(emm, comparisons = TRUE) +
+  theme_bw() +
+  labs(y = "", x = "Estimated marginal mean")
+```
+
+### Interaction Plots
+
+Visualise treatment effects across rows and columns:
+
+```{r emmip-row}
+emmip(mod, Column ~ Treatment | Row) +
+  theme_bw() +
+  labs(title = "Column effect across Treatments by Row")
+```
+
+```{r emmip-col}
+emmip(mod, Row ~ Treatment | Column) +
+  theme_bw() +
+  labs(title = "Row effect across Treatments by Column")
+```
+
+## Conclusion
+
+The Latin Square Design controls for two sources of heterogeneity simultaneously,
+making it highly efficient when the experimental layout naturally forms a grid.
+Limitations include:
+
+- The number of treatments must equal the number of row and column levels.
+- No interaction terms can be estimated (df are used for blocking).
+
+When you need to study **two treatment factors** and their interaction,
+consider a [Factorial Design](04-factorial.html).

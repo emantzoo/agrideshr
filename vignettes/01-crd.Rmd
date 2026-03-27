@@ -1,0 +1,157 @@
+---
+title: "Completely Randomized Design (CRD)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Completely Randomized Design (CRD)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## When to Use
+
+The **Completely Randomized Design (CRD)** is the simplest experimental design.
+Use it when:
+
+- There is **one treatment factor** with two or more levels.
+- Experimental units are **homogeneous** (no known sources of variability to block).
+- Treatments are **randomly assigned** to units without restriction.
+
+CRD is common in laboratory experiments and greenhouse trials where environmental
+conditions are uniform.
+
+## The Design
+
+In a CRD, each treatment is assigned to experimental units purely at random.
+The statistical model is:
+
+$$Y_{ij} = \mu + \tau_i + \varepsilon_{ij}$$
+
+where $\mu$ is the overall mean, $\tau_i$ is the effect of treatment $i$,
+and $\varepsilon_{ij} \sim N(0, \sigma^2)$.
+
+## Data
+
+We use a dataset comparing the yield of three squash varieties (Acorn, Butternut,
+Spaghetti) with three replicates each.
+
+```{r data}
+library(agrideshr)
+data(crd_data)
+str(crd_data)
+crd_data
+```
+
+## Exploratory Visualization
+
+```{r eda}
+library(ggplot2)
+
+ggplot(crd_data, aes(x = Variety, y = Yield, fill = Variety)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 16) +
+  geom_jitter(width = 0.1, size = 2) +
+  theme_bw() +
+  labs(title = "Yield by Squash Variety", y = "Yield", x = "Variety") +
+  theme(legend.position = "none")
+```
+
+Descriptive statistics by variety:
+
+```{r desc}
+library(dplyr)
+
+crd_data %>%
+  group_by(Variety) %>%
+  summarise(
+    N = n(),
+    Mean = mean(Yield),
+    SD = sd(Yield),
+    .groups = "drop"
+  )
+```
+
+## Model Fitting
+
+We fit a one-way ANOVA using `aov()`:
+
+```{r model}
+mod <- aov(Yield ~ Variety, data = crd_data)
+summary(mod)
+```
+
+The F-test assesses whether at least one variety mean differs from the others.
+
+## Assumption Checking
+
+ANOVA assumes that residuals are normally distributed and that variances
+are homogeneous across groups.
+
+```{r assumptions, fig.width = 10, fig.height = 4}
+check_assumptions(mod, data = crd_data, group = "Variety")
+```
+
+We can also check normality per group:
+
+```{r shapiro-group}
+crd_data %>%
+  group_by(Variety) %>%
+  summarise(
+    Shapiro_p = shapiro.test(Yield)$p.value,
+    .groups = "drop"
+  )
+```
+
+## Post-hoc Comparisons
+
+If the F-test is significant, we compare varieties pairwise using Tukey's HSD:
+
+```{r tukey}
+TukeyHSD(mod)
+```
+
+```{r tukey-plot}
+plot(TukeyHSD(mod), las = 1, col = "brown")
+```
+
+### Estimated Marginal Means
+
+The `emmeans` package provides estimated marginal means and pairwise contrasts:
+
+```{r emmeans}
+library(emmeans)
+
+emm <- emmeans(mod, specs = "Variety")
+emm
+```
+
+```{r emmeans-pairs}
+pairs(emm)
+```
+
+```{r emmeans-plot, fig.width = 7, fig.height = 4}
+plot(emm, comparisons = TRUE) +
+  theme_bw() +
+  labs(y = "", x = "Estimated marginal mean")
+```
+
+## Conclusion
+
+The CRD analysis provides a straightforward way to compare treatment means
+when experimental units are homogeneous. The key outputs are:
+
+1. **F-test** from the ANOVA table to detect overall differences.
+2. **Diagnostic plots** to verify model assumptions.
+3. **Tukey HSD** or **emmeans** contrasts for pairwise comparisons.
+
+When experimental units are not homogeneous, consider using a
+[Randomized Complete Block Design](02-rcbd.html) instead.

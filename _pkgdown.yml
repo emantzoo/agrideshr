@@ -1,0 +1,48 @@
+url: https://yourusername.github.io/agrideshr/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+
+navbar:
+  structure:
+    left:  [intro, articles, reference]
+    right: [search, github]
+  components:
+    articles:
+      text: Designs
+      menu:
+        - text: "1. Completely Randomized Design (CRD)"
+          href: articles/01-crd.html
+        - text: "2. Randomized Complete Block Design (RCBD)"
+          href: articles/02-rcbd.html
+        - text: "3. Latin Square Design"
+          href: articles/03-latin-square.html
+        - text: "4. Factorial Design (Two-Way ANOVA)"
+          href: articles/04-factorial.html
+        - text: "5. Split-Plot Design"
+          href: articles/05-split-plot.html
+
+reference:
+  - title: Datasets
+    desc: Built-in datasets for each experimental design
+    contents:
+      - crd_data
+      - rcbd_data
+      - lsd_data
+      - factorial_data
+      - split_plot_data
+  - title: Utilities
+    desc: Helper functions
+    contents:
+      - check_assumptions
+
+articles:
+  - title: Experimental Designs
+    navbar: Designs
+    contents:
+      - 01-crd
+      - 02-rcbd
+      - 03-latin-square
+      - 04-factorial
+      - 05-split-plot

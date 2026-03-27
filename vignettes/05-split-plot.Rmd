@@ -1,0 +1,202 @@
+---
+title: "Split-Plot Design"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Split-Plot Design}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## When to Use
+
+The **Split-Plot Design** is used when:
+
+- You have **two treatment factors**, but one is harder (or more expensive)
+  to change than the other.
+- The **whole-plot factor** is applied to larger units, and the **sub-plot factor**
+  is applied within those units.
+- Randomisation is **restricted**: the whole-plot factor is randomised first,
+  then the sub-plot factor is randomised within each whole plot.
+
+Common examples: irrigation method (whole-plot) x fertilizer type (sub-plot),
+or tillage system (whole-plot) x crop variety (sub-plot).
+
+## The Design
+
+The split-plot design has **two error terms**:
+
+$$Y_{ijk} = \mu + R_k + A_i + \delta_{ik} + B_j + (AB)_{ij} + \varepsilon_{ijk}$$
+
+where:
+
+- $R_k$ = replicate (block) effect
+- $A_i$ = whole-plot treatment effect
+- $\delta_{ik} \sim N(0, \sigma^2_\delta)$ = whole-plot error
+- $B_j$ = sub-plot treatment effect
+- $(AB)_{ij}$ = interaction
+- $\varepsilon_{ijk} \sim N(0, \sigma^2)$ = sub-plot error
+
+This requires a **mixed model** because the whole-plot error is a random effect.
+
+## Data
+
+We use a dataset with 6 whole-plot treatments, 3 sub-plot treatments, and
+6 replicates.
+
+```{r data}
+library(agrideshr)
+data(split_plot_data)
+str(split_plot_data)
+head(split_plot_data, 12)
+```
+
+## Exploratory Visualization
+
+```{r facet-plot}
+library(ggplot2)
+
+ggplot(split_plot_data, aes(x = WholePlot, y = Yield, colour = SubPlot,
+                             group = SubPlot)) +
+  geom_line() +
+  facet_wrap(~ Replicate) +
+  theme_bw() +
+  labs(title = "Yield by Whole-Plot and Sub-Plot Treatment (by Replicate)")
+```
+
+```{r boxplot}
+ggplot(split_plot_data, aes(x = WholePlot, y = Yield, fill = SubPlot)) +
+  geom_boxplot(alpha = 0.7) +
+  theme_bw() +
+  labs(title = "Yield by Whole-Plot and Sub-Plot Treatment")
+```
+
+## Model Fitting
+
+Unlike the previous designs, split-plot requires a **linear mixed model**
+using `lmer()` from the `lmerTest` package. The term `(1 | Replicate:WholePlot)`
+captures the whole-plot error:
+
+```{r model}
+library(lmerTest)
+
+fit <- lmer(Yield ~ Replicate + WholePlot * SubPlot + (1 | Replicate:WholePlot),
+            data = split_plot_data)
+```
+
+### ANOVA Table
+
+```{r anova}
+anova(fit)
+```
+
+The F-tests use appropriate denominator degrees of freedom:
+
+- **WholePlot** is tested against the whole-plot error.
+- **SubPlot** and **WholePlot:SubPlot** are tested against the sub-plot (residual) error.
+
+### Variance Components
+
+```{r varcomp}
+VarCorr(fit)
+```
+
+## Assumption Checking
+
+For mixed models, we check residuals at the sub-plot level:
+
+```{r assumptions, fig.width = 8, fig.height = 4}
+resid_vals <- residuals(fit)
+fitted_vals <- fitted(fit)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(fitted_vals, resid_vals,
+     xlab = "Fitted", ylab = "Residuals",
+     main = "Residuals vs Fitted", pch = 16, col = "steelblue")
+abline(h = 0, lty = 2, col = "red")
+
+qqnorm(resid_vals, main = "Normal Q-Q Plot", pch = 16, col = "steelblue")
+qqline(resid_vals, col = "red", lwd = 2)
+```
+
+```{r shapiro}
+shapiro.test(resid_vals)
+```
+
+## Post-hoc Comparisons
+
+### Estimated Marginal Means
+
+#### Whole-plot treatment within each sub-plot level
+
+```{r emm-a-by-b}
+library(emmeans)
+
+emm_a <- emmeans(fit, ~ WholePlot | SubPlot)
+pairs(emm_a)
+```
+
+```{r emm-a-plot, fig.width = 8, fig.height = 5}
+plot(emm_a, comparisons = TRUE) +
+  theme_bw() +
+  labs(y = "", x = "Estimated marginal mean")
+```
+
+#### Sub-plot treatment within each whole-plot level
+
+```{r emm-b-by-a}
+emm_b <- emmeans(fit, ~ SubPlot | WholePlot)
+pairs(emm_b)
+```
+
+```{r emm-b-plot, fig.width = 8, fig.height = 5}
+plot(emm_b, comparisons = TRUE) +
+  theme_bw() +
+  labs(y = "", x = "Estimated marginal mean")
+```
+
+### Interaction Plots
+
+```{r emmip-1}
+emmip(fit, WholePlot ~ SubPlot) +
+  theme_bw() +
+  labs(title = "Whole-Plot x Sub-Plot Interaction")
+```
+
+```{r emmip-2}
+emmip(fit, SubPlot ~ WholePlot) +
+  theme_bw() +
+  labs(title = "Sub-Plot x Whole-Plot Interaction")
+```
+
+## Conclusion
+
+The split-plot design is essential when practical constraints prevent full
+randomisation of all treatment combinations. Key points:
+
+1. **Mixed model** is required (`lmer`, not `aov`) to correctly partition
+   the two error terms.
+2. The whole-plot factor is tested with **less precision** (fewer effective
+   replicates) than the sub-plot factor.
+3. **emmeans** with conditional contrasts (`~ A | B`) is the appropriate
+   way to make pairwise comparisons.
+
+## Design Summary
+
+| Design | Vignette | Factors | Blocking | Model |
+|--------|----------|---------|----------|-------|
+| CRD | [01](01-crd.html) | 1 | None | `aov(Y ~ A)` |
+| RCBD | [02](02-rcbd.html) | 1 + Block | 1 blocking factor | `aov(Y ~ Block + A)` |
+| Latin Square | [03](03-latin-square.html) | 1 + Row + Col | 2 blocking factors | `aov(Y ~ Row + Col + A)` |
+| Factorial | [04](04-factorial.html) | 2+ crossed | Optional | `aov(Y ~ A * B)` |
+| Split-Plot | [05](05-split-plot.html) | 2 nested | Replicates | `lmer(Y ~ A*B + (1|Rep:A))` |

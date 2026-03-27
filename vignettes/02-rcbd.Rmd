@@ -1,0 +1,149 @@
+---
+title: "Randomized Complete Block Design (RCBD)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Randomized Complete Block Design (RCBD)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## When to Use
+
+The **Randomized Complete Block Design (RCBD)** is used when:
+
+- There is **one treatment factor** of interest.
+- There is a **known source of variability** (e.g., soil gradient, time, lab bench)
+  that can be controlled by grouping units into **blocks**.
+- Each block contains **all treatments** exactly once.
+
+RCBD reduces experimental error by accounting for block-to-block variability,
+making it more efficient than a CRD when conditions are not uniform.
+
+## The Design
+
+The statistical model is:
+
+$$Y_{ij} = \mu + \beta_j + \tau_i + \varepsilon_{ij}$$
+
+where $\beta_j$ is the effect of block $j$ and $\tau_i$ is the treatment effect.
+Block effects are included to absorb known variability, but we are primarily
+interested in testing treatment differences.
+
+## Data
+
+We use a dataset with six fertilizer levels (X25 through X150) applied across
+four blocks.
+
+```{r data}
+library(agrideshr)
+data(rcbd_data)
+str(rcbd_data)
+head(rcbd_data, 12)
+```
+
+## Exploratory Visualization
+
+```{r boxplot}
+library(ggplot2)
+
+ggplot(rcbd_data, aes(x = Treatment, y = Yield, fill = Treatment)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.1, size = 2) +
+  theme_bw() +
+  labs(title = "Yield by Fertilizer Level", y = "Yield") +
+  theme(legend.position = "none")
+```
+
+Treatment response by block:
+
+```{r interaction}
+ggplot(rcbd_data, aes(x = Treatment, y = Yield, colour = Block, group = Block)) +
+  geom_point(size = 2) +
+  stat_summary(fun = mean, geom = "line") +
+  theme_bw() +
+  labs(title = "Treatment Response by Block")
+```
+
+## Model Fitting
+
+In RCBD, the block is included as a factor in the model but is not the focus
+of inference:
+
+```{r model}
+mod <- aov(Yield ~ Block + Treatment, data = rcbd_data)
+summary(mod)
+```
+
+The F-test for `Treatment` tells us whether fertilizer levels differ after
+accounting for block effects.
+
+## Assumption Checking
+
+```{r assumptions, fig.width = 10, fig.height = 4}
+check_assumptions(mod, data = rcbd_data, group = "Treatment")
+```
+
+## Post-hoc Comparisons
+
+We compare treatments (not blocks) using Tukey's HSD:
+
+```{r tukey}
+TukeyHSD(mod, which = "Treatment")
+```
+
+```{r tukey-plot}
+plot(TukeyHSD(mod, which = "Treatment"), las = 1, col = "brown")
+```
+
+### Estimated Marginal Means
+
+```{r emmeans}
+library(emmeans)
+
+emm <- emmeans(mod, specs = "Treatment")
+emm
+```
+
+```{r emmeans-pairs}
+pairs(emm)
+```
+
+```{r emmeans-plot, fig.width = 7, fig.height = 4}
+plot(emm, comparisons = TRUE) +
+  theme_bw() +
+  labs(y = "", x = "Estimated marginal mean")
+```
+
+### Block-by-Treatment Interaction Plot
+
+This plot helps visualise whether the treatment effect is consistent across blocks:
+
+```{r emmip}
+emmip(mod, Block ~ Treatment) +
+  theme_bw() +
+  labs(title = "Block x Treatment Interaction Plot")
+```
+
+## Conclusion
+
+The RCBD is the workhorse of agricultural experimentation. By blocking on a
+known source of variability, it provides a more precise estimate of treatment
+effects than a CRD. Key outputs:
+
+1. **ANOVA table** with block and treatment effects separated.
+2. **Tukey HSD** for pairwise treatment comparisons.
+3. **EMM interaction plots** to check consistency across blocks.
+
+When there are **two sources of heterogeneity** (e.g., rows and columns),
+consider a [Latin Square Design](03-latin-square.html).

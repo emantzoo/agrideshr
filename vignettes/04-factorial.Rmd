@@ -1,0 +1,176 @@
+---
+title: "Factorial Design (Two-Way ANOVA)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Factorial Design (Two-Way ANOVA)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## When to Use
+
+A **Factorial Design** is used when:
+
+- You want to study **two or more treatment factors** simultaneously.
+- You are interested in both **main effects** and **interactions** between factors.
+- All combinations of factor levels are tested.
+
+Factorial designs are more efficient than running separate one-factor experiments
+because they provide information about interactions at no extra cost.
+
+## The Design
+
+For a two-factor factorial, the model is:
+
+$$Y_{ijk} = \mu + \alpha_i + \beta_j + (\alpha\beta)_{ij} + \varepsilon_{ijk}$$
+
+where $\alpha_i$ is the effect of factor A (e.g., Temperature), $\beta_j$ is the
+effect of factor B (e.g., Fertilizer), and $(\alpha\beta)_{ij}$ is their interaction.
+
+## Data
+
+We use a dataset crossing three temperature levels with three fertilizer types,
+with four replicates per combination.
+
+```{r data}
+library(agrideshr)
+data(factorial_data)
+str(factorial_data)
+head(factorial_data, 12)
+```
+
+## Exploratory Visualization
+
+```{r interaction-plot}
+library(ggplot2)
+
+ggplot(factorial_data, aes(x = Temperature, y = Yield, colour = Fertilizer,
+                            group = Fertilizer)) +
+  geom_point(size = 2, position = position_dodge(0.2)) +
+  stat_summary(fun = mean, geom = "line", linewidth = 1) +
+  theme_bw() +
+  labs(title = "Interaction Plot: Temperature x Fertilizer")
+```
+
+```{r boxplot}
+ggplot(factorial_data, aes(x = Temperature, y = Yield, fill = Fertilizer)) +
+  geom_boxplot(alpha = 0.7) +
+  theme_bw() +
+  labs(title = "Yield by Temperature and Fertilizer")
+```
+
+## Model Fitting
+
+### Additive Model (No Interaction)
+
+```{r additive}
+mod_add <- aov(Yield ~ Temperature + Fertilizer, data = factorial_data)
+summary(mod_add)
+```
+
+### Full Model (With Interaction)
+
+```{r full}
+mod_full <- aov(Yield ~ Temperature * Fertilizer, data = factorial_data)
+summary(mod_full)
+```
+
+If the interaction term is not significant, the additive model is preferred for
+its simplicity. If significant, the interaction must be interpreted.
+
+## Assumption Checking
+
+```{r assumptions, fig.width = 10, fig.height = 4}
+check_assumptions(mod_add, data = factorial_data, group = "Temperature")
+```
+
+## Post-hoc Comparisons
+
+### By Fertilizer
+
+```{r tukey-fert}
+TukeyHSD(mod_add, which = "Fertilizer")
+```
+
+```{r tukey-fert-plot}
+plot(TukeyHSD(mod_add, which = "Fertilizer"), las = 1, col = "brown")
+```
+
+### By Temperature
+
+```{r tukey-temp}
+TukeyHSD(mod_add, which = "Temperature")
+```
+
+```{r tukey-temp-plot}
+plot(TukeyHSD(mod_add, which = "Temperature"), las = 1, col = "brown")
+```
+
+### Estimated Marginal Means
+
+```{r emmeans-fert}
+library(emmeans)
+
+emm_fert <- emmeans(mod_add, specs = "Fertilizer")
+emm_fert
+pairs(emm_fert)
+```
+
+```{r emmeans-temp}
+emm_temp <- emmeans(mod_add, specs = "Temperature")
+emm_temp
+pairs(emm_temp)
+```
+
+```{r emmeans-plots, fig.width = 10, fig.height = 4}
+p1 <- plot(emm_fert, comparisons = TRUE) +
+  theme_bw() + labs(y = "", x = "EMM: Fertilizer")
+p2 <- plot(emm_temp, comparisons = TRUE) +
+  theme_bw() + labs(y = "", x = "EMM: Temperature")
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+### Conditional Contrasts (If Interaction Is Present)
+
+When the interaction is significant, compare one factor at each level of the other:
+
+```{r conditional, eval = FALSE}
+# Temperature comparisons within each Fertilizer level
+emmeans(mod_full, pairwise ~ Temperature | Fertilizer)
+
+# Fertilizer comparisons within each Temperature level
+emmeans(mod_full, pairwise ~ Fertilizer | Temperature)
+```
+
+### Interaction Plot (EMM)
+
+```{r emmip}
+emmip(mod_add, Fertilizer ~ Temperature) +
+  theme_bw() +
+  labs(title = "Estimated Marginal Means: Fertilizer x Temperature")
+```
+
+## Conclusion
+
+Factorial designs allow efficient study of multiple factors and their interactions.
+The analysis workflow:
+
+1. Fit both additive and interaction models.
+2. Test whether the interaction is significant.
+3. If **no interaction**: interpret main effects separately.
+4. If **interaction present**: use conditional contrasts to compare one factor
+   within levels of the other.
+
+When factors have a **nested structure** (e.g., sub-treatments applied within
+main treatments), consider a [Split-Plot Design](05-split-plot.html).
