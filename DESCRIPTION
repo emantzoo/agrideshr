@@ -2,7 +2,7 @@ Package: agrideshr
 Title: Agricultural Experimental Designs in R
 Version: 0.1.0
 Authors@R:
-    person("Evangelos", "Mantzoukas", , "emant@example.com", role = c("aut", "cre"))
+    person("emantzoo", , , "emantzo@hotmail.com", role = c("aut", "cre"))
 Description: A tutorial package demonstrating the analysis of five classical
     agricultural experimental designs in R: Completely Randomized Design (CRD),
     Randomized Complete Block Design (RCBD), Latin Square Design, Factorial

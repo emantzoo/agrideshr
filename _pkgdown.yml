@@ -1,5 +1,9 @@
 url: https://emantzoo.github.io/agrideshr/
 
+authors:
+  emantzoo:
+    href: https://emantzoo.github.io/
+
 template:
   bootstrap: 5
   bootswatch: flatly
