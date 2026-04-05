@@ -1,5 +1,8 @@
 # agrideshr <img src="man/figures/logo.png" align="right" height="138" />
 
+![agrideshr](https://raw.githubusercontent.com/emantzoo/emantzoo.github.io/master/images/agrideshr.jpg)
+
+
 > Agricultural Experimental Designs in R
 
 A tutorial R package demonstrating the analysis of five classical experimental
