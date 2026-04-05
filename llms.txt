@@ -1,5 +1,9 @@
 # agrideshr ![](reference/figures/logo.png)
 
+![agrideshr](https://raw.githubusercontent.com/emantzoo/emantzoo.github.io/master/images/agrideshr.jpg)
+
+agrideshr
+
 > Agricultural Experimental Designs in R
 
 A tutorial R package demonstrating the analysis of five classical
